@@ -22,9 +22,45 @@
 3. 将一个指针 ZIP 或图片文件夹拖到 App 图标；也可双击 App 后选择文件。
 4. 在原文件旁找到生成的 `（自动生成）.cape`，双击导入 Mousecape。
 
-Release 版是临时签名、未公证的 App。若 macOS 拦截，请首次对它右键 →“打开”，或前往“隐私与安全性”选择“仍要打开”。
+若 macOS 在首次打开时拦截，请对 App 右键 →“打开”，或前往“隐私与安全性”选择“仍要打开”。
 
-输入需包含 `Normal.png`、`Text.png`、`Busy.png` 等共 15 张固定名称的 PNG 帧图。详细列表和构建说明见 [英文 README](README_en.md)。
+## 输入图片要求
+
+指针包必须包含以下 15 张固定名称的 PNG 帧图。每张图都是由正方形帧自上而下拼成的动画序列，例如 `32×256` 代表 8 帧 `32×32` 图像。
+
+| | | |
+|---|---|---|
+| `Alternate.png` | `Busy.png` | `Diagonal1.png` |
+| `Diagonal2.png` | `Handwriting.png` | `Help.png` |
+| `Horizontal.png` | `Link.png` | `Move.png` |
+| `Normal.png` | `Precision.png` | `Text.png` |
+| `Unavailable.png` | `Vertical.png` | `Working.png` |
+
+## 从源码构建
+
+需要 macOS 15+、Xcode Command Line Tools，以及带 Pillow 的 Python 3。
+
+```bash
+python3 -m pip install -r requirements.txt
+zsh scripts/build-app.sh
+```
+
+生成的 App 位于 `dist/Cursor Cape Builder.app`。
+
+如需打包成可上传到 GitHub Releases 的压缩包：
+
+```bash
+zsh scripts/package-release.sh
+```
+
+压缩包位于 `release/Cursor-Cape-Builder-macOS.zip`。
+
+## 命令行用法
+
+```bash
+python3 src/CursorCapeBuilder.py /path/to/cursor-pack.zip /path/to/theme.cape \
+  --name "My Cursor Theme" --author "Your Name"
+```
 
 ## 许可证
 
