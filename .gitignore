@@ -1,0 +1,6 @@
+.DS_Store
+*.cape
+!src/CursorCapeBuilder.template.cape
+dist/
+build/
+release/
