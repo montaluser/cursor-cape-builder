@@ -63,19 +63,65 @@ GROUPS: dict[str, dict[str, object]] = {
 }
 
 
-def read_source(source: Path, filename: str) -> bytes:
+def normalized_stem(value: str) -> str:
+    """Match common pack labels such as `Normal-Sheet.png` to `Normal`.
+
+    Only suffix words are removed, so a file does not get classified by a
+    coincidental word in the middle of its name.
+    """
+    stem = Path(value).stem.casefold()
+    stem = re.sub(r"(?:[-_\s]+(?:sheet|spritesheet|sprite|frames?|cursor|pointer|mouse))+$", "", stem)
+    return re.sub(r"[^a-z0-9]+", "", stem)
+
+
+def image_entries(source: Path) -> list[str]:
     if source.is_dir():
-        path = source / filename
-        if not path.is_file():
-            raise FileNotFoundError(filename)
-        return path.read_bytes()
-    if source.is_file() and source.suffix.lower() == ".zip":
+        return [str(path.relative_to(source)) for path in source.rglob("*")
+                if path.is_file() and path.suffix.casefold() == ".png"]
+    if source.is_file() and source.suffix.casefold() == ".zip":
         with zipfile.ZipFile(source) as archive:
-            try:
-                return archive.read(filename)
-            except KeyError as error:
-                raise FileNotFoundError(filename) from error
+            return [name for name in archive.namelist()
+                    if not name.endswith("/") and Path(name).suffix.casefold() == ".png"]
     raise ValueError("源路径必须是图片文件夹或 .zip 压缩包")
+
+
+def resolve_source_entries(source: Path) -> dict[str, str]:
+    """Find exactly one sprite image for every conventional asset group."""
+    entries = image_entries(source)
+    matches: dict[str, list[tuple[int, str]]] = {name: [] for name in GROUPS}
+    for entry in entries:
+        filename = Path(entry).name
+        for asset_name in GROUPS:
+            if normalized_stem(filename) != normalized_stem(asset_name):
+                continue
+            score = 2 if Path(filename).stem.casefold() == asset_name.casefold() else 1
+            matches[asset_name].append((score, entry))
+
+    resolved: dict[str, str] = {}
+    for asset_name, candidates in matches.items():
+        if not candidates:
+            continue
+        best_score = max(score for score, _entry in candidates)
+        best = [entry for score, entry in candidates if score == best_score]
+        if len(best) > 1:
+            listed = "、".join(sorted(best))
+            raise ValueError(f"{asset_name} 匹配到多张图片，无法自动判断：{listed}")
+        resolved[asset_name] = best[0]
+
+    missing = [f"{name}.png" for name in GROUPS if name not in resolved]
+    if missing:
+        available = "、".join(sorted(entries)) or "（未找到 PNG 图片）"
+        raise FileNotFoundError(
+            f"缺少：{'、'.join(missing)}。已找到的 PNG：{available}"
+        )
+    return resolved
+
+
+def read_source(source: Path, entry: str) -> bytes:
+    if source.is_dir():
+        return (source / entry).read_bytes()
+    with zipfile.ZipFile(source) as archive:
+        return archive.read(entry)
 
 
 def sprite_to_tiff(payload: bytes, name: str) -> tuple[bytes, int, int, int]:
@@ -126,9 +172,11 @@ def main() -> None:
     if not isinstance(cursors, dict):
         raise SystemExit("模板不是有效的 Mousecape .cape 文件")
 
+    source_entries = resolve_source_entries(args.source)
     for asset_name, group in GROUPS.items():
-        payload = read_source(args.source, f"{asset_name}.png")
-        image_data, width, _height, frames = sprite_to_tiff(payload, f"{asset_name}.png")
+        entry = source_entries[asset_name]
+        payload = read_source(args.source, entry)
+        image_data, width, _height, frames = sprite_to_tiff(payload, entry)
         hotspot_x, hotspot_y = group["hotspot"]
         scale = width / 32.0
         for key in group["keys"]:

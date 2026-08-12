@@ -26,7 +26,7 @@ The release build is ad-hoc signed, not notarized. macOS may require the first-l
 
 ## Expected source files
 
-The source must include all 15 of these PNG names. Each image is a vertical sprite sheet made from square frames, for example `32×256` for eight `32×32` frames.
+The source must include all 15 of these PNG groups. The app searches subfolders in a ZIP or folder and ignores filename case; it also accepts common suffixes such as `Normal-Sheet.png` and `Text-Cursor.png`. Each image is a vertical sprite sheet made from square frames, for example `32×256` for eight `32×32` frames.
 
 | | | |
 |---|---|---|
