@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.2 — 2026-08-12
+
+- Ignore Finder ZIP metadata (`__MACOSX` folders and `._` resource-fork files) when locating cursor images.
+
 ## 1.0.1 — 2026-08-12
 
 - Accept common cursor-sheet suffixes such as `-Sheet`, search source subfolders, and report ambiguous image matches clearly.

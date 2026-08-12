@@ -18,7 +18,7 @@ import re
 import sys
 import zipfile
 from copy import deepcopy
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 try:
     from PIL import Image
@@ -74,14 +74,24 @@ def normalized_stem(value: str) -> str:
     return re.sub(r"[^a-z0-9]+", "", stem)
 
 
+def is_cursor_image_entry(entry: str) -> bool:
+    """Ignore Finder ZIP metadata and keep only actual PNG source images."""
+    path = PurePosixPath(entry.replace("\\", "/"))
+    return (
+        path.suffix.casefold() == ".png"
+        and not any(part.casefold() == "__macosx" for part in path.parts)
+        and not path.name.startswith("._")
+    )
+
+
 def image_entries(source: Path) -> list[str]:
     if source.is_dir():
         return [str(path.relative_to(source)) for path in source.rglob("*")
-                if path.is_file() and path.suffix.casefold() == ".png"]
+                if path.is_file() and is_cursor_image_entry(str(path.relative_to(source)))]
     if source.is_file() and source.suffix.casefold() == ".zip":
         with zipfile.ZipFile(source) as archive:
             return [name for name in archive.namelist()
-                    if not name.endswith("/") and Path(name).suffix.casefold() == ".png"]
+                    if not name.endswith("/") and is_cursor_image_entry(name)]
     raise ValueError("源路径必须是图片文件夹或 .zip 压缩包")
 
 
